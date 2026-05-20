@@ -64,7 +64,7 @@ jobs:
         run: gcloud auth configure-docker eu.gcr.io --quiet
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff9c45d94f17d83de1a # v3.6.0
+        uses: docker/setup-qemu-action@v3.6.0
         with:
           platforms: linux/amd64,linux/arm64
 
