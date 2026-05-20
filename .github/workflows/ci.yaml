@@ -75,7 +75,7 @@ jobs:
               - '**/*.lua'
 
   lua-lint:
-    runs-on: ubuntu-latest
+    runs-on: monline-generic-large
     needs: changes
     if: |
       (needs.changes.outputs.lua == 'true') || ${{ github.event.workflow_dispatch.run_e2e == 'true' }}
@@ -89,7 +89,7 @@ jobs:
           args: --codes --globals lua_ingress --globals configuration --globals balancer --globals monitor --globals certificate --globals tcp_udp_configuration --globals tcp_udp_balancer --no-max-comment-line-length -q rootfs/etc/nginx/lua/
 
   test-go:
-    runs-on: ubuntu-latest
+    runs-on: monline-generic-large
     needs: changes
     if: |
       (needs.changes.outputs.go == 'true') || ${{ github.event.workflow_dispatch.run_e2e == 'true' }}
@@ -115,7 +115,7 @@ jobs:
 
   verify-docs:
     name: Verify Doc generation
-    runs-on: ubuntu-latest
+    runs-on: monline-generic-large
     needs: changes
     if: |
       (needs.changes.outputs.go == 'true') || (needs.changes.outputs.docs == 'true') || ${{ github.event.workflow_dispatch.run_e2e == 'true' }}
@@ -135,7 +135,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: monline-generic-large
     needs: changes
     outputs:
       golangversion: ${{ steps.golangversion.outputs.version }}
@@ -212,7 +212,7 @@ jobs:
 
   chart-lint:
     name: Chart / Lint
-    runs-on: ubuntu-latest
+    runs-on: monline-generic-large
     needs:
       - changes
 
@@ -264,7 +264,7 @@ jobs:
 
   chart-test:
     name: Chart / Test
-    runs-on: ubuntu-latest
+    runs-on: monline-generic-large
     needs:
       - changes
       - build
