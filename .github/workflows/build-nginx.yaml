@@ -1,0 +1,103 @@
+name: Build Nginx Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'images/nginx/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'images/nginx/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref == 'refs/heads/main' && format('ci-main-{0}', github.sha) || format('ci-{0}', github.ref) }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: read
+
+env:
+  GC_PROJECT_ID: prod-mercadona
+  DOCKER_REGISTRY: eu.gcr.io/prod-mercadona
+  DOCKER_IMAGE_NAME: ingress-nginx
+
+jobs:
+  build-nginx:
+    name: Build nginx image
+    runs-on: monline-generic
+    timeout-minutes: 360   # ARM64 via QEMU is slow
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          sudo chown -R $USER:$USER .
+
+      - name: Read NGINX_VERSION
+        id: nginx-version
+        run: |
+          NGINX_VERSION=$(grep '^export NGINX_VERSION=' images/nginx/rootfs/build.sh \
+            | head -1 | cut -d= -f2)
+          echo "version=${NGINX_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Detected NGINX_VERSION=${NGINX_VERSION}"
+
+      - name: GCP Auth
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.GOOGLE_CREDENTIALS }}"
+          create_credentials_file: true
+          export_environment_variables: false
+
+      - name: GCP Auth Docker
+        run: gcloud auth configure-docker eu.gcr.io --quiet
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff9c45d94f17d83de1a # v3.6.0
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+        with:
+          version: latest
+          platforms: linux/amd64,linux/arm64
+
+      - name: Build and push (main branch)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v6
+        with:
+          context: images/nginx/rootfs
+          file: images/nginx/rootfs/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME }}:${{ steps.nginx-version.outputs.version }}
+            ${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+          cache-from: type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME }}:${{ steps.nginx-version.outputs.version }}
+          cache-to: type=inline
+
+      - name: Build only (pull request / workflow_dispatch)
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        uses: docker/build-push-action@v6
+        with:
+          context: images/nginx/rootfs
+          file: images/nginx/rootfs/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME }}:${{ steps.nginx-version.outputs.version }}
+          cache-from: type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME }}:${{ steps.nginx-version.outputs.version }}
+          cache-to: type=inline
