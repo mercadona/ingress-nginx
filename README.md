@@ -1,13 +1,23 @@
-# Ingress NGINX Retirement
+# Mercadona Fork — Ingress NGINX Controller
 
-## Retiring
+> **This is a Mercadona SRE fork of [kubernetes/ingress-nginx](https://github.com/kubernetes/ingress-nginx).**
+>
+> The upstream project was officially retired in late 2025. This fork is maintained by the Mercadona SRE team to keep the controller secure and operational for internal GKE clusters. Only security-critical fixes and nginx version upgrades are in scope.
+
+## Fork changes
+
+| Release | Change | PR |
+|---|---|---|
+| nginx base `v2.3.0` | Upgrade nginx 1.27.1 → **1.30.1** (fixes CVE-2025-23419 and others); bump NJS 0.9.9, lua-nginx-module 0.10.29, stream-lua 0.0.17, lua-resty-core 0.1.32 | [#1](../../pull/1) |
+
+## Upstream retirement notice
 
 [What You Need to Know about Ingress NGINX Retirement](https://www.kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/):
 
-* Best-effort maintenance will continue until March 2026.
-* Afterward, there will be no further releases, no bugfixes, and no updates to resolve any security vulnerabilities that may be discovered.
-* Existing deployments of Ingress NGINX will not be broken.
-  * Existing project artifacts such as Helm charts and container images will remain available.
+* Best-effort maintenance continued until March 2026.
+* No further upstream releases, bugfixes, or security updates will be published.
+* Existing deployments of Ingress NGINX are not broken.
+  * Existing project artifacts such as Helm charts and container images remain available.
 
 # Ingress NGINX Controller
 
@@ -49,6 +59,7 @@ the versions listed. Ingress-Nginx versions **may** work on older versions, but 
 
 | Supported | Ingress-NGINX version | k8s supported version         | Alpine Version | Nginx Version | Helm Chart Version |
 | :-------: | --------------------- | ----------------------------- | -------------- | ------------- | ------------------ |
+|    🚧     | **next** _(in progress)_ | 1.35, 1.34, 1.33, 1.32, 1.31 | 3.23.3        | **1.30.1**    | TBD                |
 |    🔄     | **v1.15.1**           | 1.35, 1.34, 1.33, 1.32, 1.31  | 3.23.3         | 1.27.1        | 4.15.1             |
 |    🔄     | **v1.15.0**           | 1.35, 1.34, 1.33, 1.32, 1.31  | 3.23.3         | 1.27.1        | 4.15.0             |
 |    🔄     | **v1.14.5**           | 1.34, 1.33, 1.32, 1.31, 1.30  | 3.23.3         | 1.27.1        | 4.14.5             |

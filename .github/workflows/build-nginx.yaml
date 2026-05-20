@@ -1,0 +1,150 @@
+---
+name: Release images
+
+"on":
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: docker-images-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_REGISTRY: ghcr.io/mercadona/ingress-nginx
+  IMAGE_PLATFORMS: linux/amd64,linux/arm64
+  IMAGE_ARCHES: amd64 arm64
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image version
+        run: |
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          if [ "${VERSION}" = "main" ]; then
+            VERSION=latest
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=$(echo "${VERSION}" | sed -e 's/^v//')
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Publish nginx base image
+        timeout-minutes: 360
+        working-directory: images/nginx
+        run: |
+          NGINX_VERSION=$(grep 'export NGINX_VERSION=' rootfs/build.sh | sed 's/.*NGINX_VERSION=//')
+          if docker manifest inspect "${{ env.IMAGE_REGISTRY }}/nginx:${NGINX_VERSION}" >/dev/null 2>&1; then
+            echo "nginx ${NGINX_VERSION} already published, skipping build"
+          else
+            make \
+              REGISTRY="${{ env.IMAGE_REGISTRY }}" \
+              PLATFORMS="${{ env.IMAGE_PLATFORMS }}" \
+              push
+          fi
+
+      - name: Publish controller images
+        run: |
+          NGINX_VERSION=$(grep 'export NGINX_VERSION=' images/nginx/rootfs/build.sh | sed 's/.*NGINX_VERSION=//')
+          make \
+            PLATFORMS="${{ env.IMAGE_ARCHES }}" \
+            BUILDX_PLATFORMS="${{ env.IMAGE_PLATFORMS }}" \
+            REGISTRY="${{ env.IMAGE_REGISTRY }}" \
+            BASE_IMAGE="${{ env.IMAGE_REGISTRY }}/nginx:${NGINX_VERSION}" \
+            TAG="${VERSION}" \
+            release
+
+      - name: Publish kube-webhook-certgen image
+        working-directory: images
+        run: |
+          make \
+            PLATFORMS="${{ env.IMAGE_PLATFORMS }}" \
+            REGISTRY="${{ env.IMAGE_REGISTRY }}" \
+            NAME=kube-webhook-certgen \
+            TAG="${VERSION}" \
+            push
+
+      - name: Get Changelog Entry
+        if: startsWith(github.ref, 'refs/tags/')
+        id: changelog_reader
+        run: |
+          VERSION=v${{ env.VERSION }}
+          echo "Extracting changelog for ${VERSION}"
+
+          START_LINE=$(grep -n "## \[${VERSION}\]" CHANGELOG.md | cut -d: -f1)
+          if [ -z "$START_LINE" ]; then
+            echo "No changelog entry found for ${VERSION}"
+            echo "Release ${VERSION}" > /tmp/changelog.txt
+          else
+            NEXT_VERSION_LINE=$(tail -n +$((START_LINE + 1)) CHANGELOG.md \
+              | grep -n "## \[" | head -1 | cut -d: -f1)
+            if [ -z "$NEXT_VERSION_LINE" ]; then
+              END_LINE=$(wc -l < CHANGELOG.md)
+            else
+              END_LINE=$((START_LINE + NEXT_VERSION_LINE - 1))
+            fi
+            sed -n "${START_LINE},${END_LINE}p" \
+              CHANGELOG.md > /tmp/changelog.txt
+          fi
+
+      - name: Generate Release Notes
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          PREV_TAG=$(git tag --sort=-creatordate \
+            | grep -v "^v${VERSION}$" | head -1 || true)
+          .ci/generate-release-notes.sh \
+            "v${VERSION}" "$PREV_TAG" /tmp/changelog.txt
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v3
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body_path: /tmp/release-notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get go version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: echo "GOLANG_VERSION=$(cat GOLANG_VERSION)" >> $GITHUB_ENV
+
+      - name: Set up Go
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+          check-latest: true
+
+      - name: Run GoReleaser
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: release --clean --skip=validate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
