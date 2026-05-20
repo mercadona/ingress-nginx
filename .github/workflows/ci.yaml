@@ -38,7 +38,7 @@ jobs:
     permissions:
       contents: read  # for dorny/paths-filter to fetch a list of changed files
       pull-requests: read  # for dorny/paths-filter to read pull requests
-    runs-on: ubuntu-latest
+    runs-on: monline-generic-large
     outputs:
       go: ${{ steps.filter.outputs.go }}
       charts: ${{ steps.filter.outputs.charts }}
@@ -108,9 +108,11 @@ jobs:
           check-latest: true
 
       - name: Run test
+        env:
+          DOCKER_IN_DOCKER_ENABLED: "true"
         run: make test
 
-        
+
   verify-docs:
     name: Verify Doc generation
     runs-on: ubuntu-latest
