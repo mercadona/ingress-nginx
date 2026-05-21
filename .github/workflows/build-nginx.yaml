@@ -66,6 +66,7 @@ jobs:
             make \
               REGISTRY="${{ env.IMAGE_REGISTRY }}" \
               PLATFORMS="${{ env.IMAGE_PLATFORMS }}" \
+              TAG="${NGINX_VERSION}" \
               push
           fi
 
