@@ -8,7 +8,8 @@
 
 | Release | Change | PR | Status |
 |---|---|---|---|
-| nginx base `v2.4.0` | Upgrade nginx 1.30.1 → **1.30.2** (security fix: buffer overflow in `ngx_http_rewrite_module`) | [#3](../../pull/3) | 🚧 in progress |
+| nginx base `v2.5.0` | Upgrade nginx 1.30.2 → **1.30.7** (20 CVEs fixed in 1.30.3–1.30.7, incl. HTTP/2, HTTP/3 and resolver use-after-free); rebase `log_escape_non_ascii` patch onto OpenResty's nginx-1.31.9 version | [#4](../../pull/4) | 🚧 in progress |
+| nginx base `v2.4.0` | Upgrade nginx 1.30.1 → **1.30.2** (security fix: buffer overflow in `ngx_http_rewrite_module`) | [#3](../../pull/3) | ✅ validated |
 | nginx base `v2.3.0` | Upgrade nginx 1.27.1 → **1.30.1** (fixes CVE-2025-23419 and others); bump NJS 0.9.9, lua-nginx-module 0.10.29, stream-lua 0.0.17, lua-resty-core 0.1.32 | [#1](../../pull/1) | ✅ validated |
 
 ## Upstream retirement notice
@@ -60,7 +61,8 @@ the versions listed. Ingress-Nginx versions **may** work on older versions, but 
 
 | Supported | Ingress-NGINX version | k8s supported version         | Alpine Version | Nginx Version | Helm Chart Version |
 | :-------: | --------------------- | ----------------------------- | -------------- | ------------- | ------------------ |
-|    🚧     | **next** _(in progress)_ | 1.35, 1.34, 1.33, 1.32, 1.31 | 3.23.3        | **1.30.2**    | TBD                |
+|    🚧     | **next** _(in progress)_ | 1.35, 1.34, 1.33, 1.32, 1.31 | 3.23.4        | **1.30.7**    | TBD                |
+|    ✅     | **mercadona-v2.4.0**  | 1.35, 1.34, 1.33, 1.32, 1.31  | 3.23.4         | **1.30.2**    | —                  |
 |    ✅     | **mercadona-v2.3.0**  | 1.35, 1.34, 1.33, 1.32, 1.31  | 3.23.3         | **1.30.1**    | —                  |
 |    🔄     | **v1.15.1**           | 1.35, 1.34, 1.33, 1.32, 1.31  | 3.23.3         | 1.27.1        | 4.15.1             |
 |    🔄     | **v1.15.0**           | 1.35, 1.34, 1.33, 1.32, 1.31  | 3.23.3         | 1.27.1        | 4.15.0             |
